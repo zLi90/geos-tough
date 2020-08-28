@@ -1,0 +1,38 @@
+<OS> New
+MEMORY
+'HYD+OIL'
+   3     4    4    .FALSE.            ! NK,NEQ,NPH,binary_diffusion
+'Cartesian'   108000  317190    5  .FALSE.  .FALSE.  ! MNEL,MNCON,No_CEN,active_conx_only
+  10                                  ! MaxNum_SS
+   5                                  ! MaxNum_Media
+.TRUE.  .FALSE.  .FALSE.              ! element_by_element_properties, porosity_perm_dependence, scaled_capillary_pressure
+.FALSE.  'Continuous'                 ! coupled_geochemistry, property_update = 'Continuous', 'Iteration', 'Timestep'
+.FALSE.  ' ' 'Continuous'  0              ! coupled_geomechanics, property_update, num_geomech_param
+ROCKS----1----*----2----*----3----*----4----*----5----*----6----*----7----*----8----*----9----*----0
+
+HYD+OIL--1----*-Modified Chlorobenzene data-*----5----*----6----*----7----*----8
+     1                       ! HCom%NCom
+'CH4'  6.0d0 1.00d00         ! Name, hydration number, mole fraction in composite hydrate
+     1                       ! Number of coefficients in thermal conductivity polynomial
+  5.0e-1                     ! Coefficients in the thermal conductivity polynomial
+     1                       ! Number of coefficients in the specific heat polynomial
+  2.1e03                     ! Coefficients in the specific heat polynomial
+     1                       ! Number of coefficients in density polynomial
+  9.2e02                     ! Coefficients in the density polynomial
+.FALSE.                      ! inhibitor_present,T_MaxOff,C_MaxOff,MW_Inhib,D_Inhib,H_InhSol,InhibitorCpCoeff(0,1,2)
+2                            ! F_EqOption
+'EQUILIBRIUM'                ! Type of dissociation
+
+START----1----*----2----*----3----*----4----*----5----*----6----*----7----*----8
+----*----1 MOP: 123456789*123456789*1234 ---*----5----*----6----*----7----*----8----*----9----*----0
+PARAM----1----*----2----*----3----*----4----*----5----*----6----*----7----*----8----*----9----*----0
+
+GENER----1----*----2----*----3----*----4----*----5----*----6----*----7----*----8
+
+INDOM----1----*----2----*----3----*----4----*----5----*----6----*----7----*----8
+
+TIMES----1----*----2----*----3----*----4----*----5----*----6----*----7----*----8
+
+Conx_Time_Series----2---*----3----*----4----*----5----*----6----*----7----*----8
+
+ENDCY----1----*----2----*----3----*----4----*----5----*----6----*----7----*----8
