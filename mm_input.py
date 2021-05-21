@@ -468,7 +468,7 @@ class Mesh():
         return elem, conn
 
 
-    def adjust_mesh_poro(self, elem, conn, gmap, map, poro):
+    def adjust_mesh_poro(self, elem, conn, gmap, map, poro, min_ratio=None):
         """ Adjust mesh based on aperture
 
         This is version2 of adjust_mesh. It does not directly change mesh
@@ -477,7 +477,9 @@ class Mesh():
         """
         self.min_aper = 1e-4
         N = self.aper.shape[0]
-        # self.min_aper = np.amax([np.nanmax(self.aper[:,3])*0.8, np.nanmin(self.aper[:,3])])
+        if min_ratio != None:
+            self.min_aper = np.amax([np.nanmax(self.aper[:,3])/min_ratio, np.nanmin(self.aper[:,3])])
+            print(" >>> Minimum aperture adjusted to ", self.min_aper)
         # loop over all apertures to adjust mesh size
         count = 0
         for ii in range(N):
@@ -617,7 +619,7 @@ class Geos():
         return np.array(out)
 
 
-    def block_checking(self, data, blk_key, blk_range, coef):
+    def block_checking(self, data, blk_key, bkr, coef):
         """ Reduce aperture for the isolated regions to make model converge
 
         For the time being, the isolated regions have to be manually delineated
@@ -628,116 +630,116 @@ class Geos():
         """
         aper = copy.deepcopy(data)
 
+        if blk_key != None:
+            blk_range = bkr[blk_key]
+            for n_blk in range(len(blk_range)):
+                #   extract aperture within the manually-selected isolated region
+                blk_aper = []
+                for ii in range(np.shape(aper)[0]):
+                    if aper[ii,0] > blk_range[n_blk][0] and aper[ii,0] < blk_range[n_blk][1]:
+                        if aper[ii,2] > blk_range[n_blk][2] and aper[ii,2] < blk_range[n_blk][3]:
+                            blk_aper.append([aper[ii,0],aper[ii,1],aper[ii,2],aper[ii,3]])
+                blk_aper = np.array(blk_aper)
+                xVec = np.unique(blk_aper[:,0])
+                zVec = np.unique(blk_aper[:,2])
+                blk_aper2D = np.nan * np.ones((len(zVec), len(xVec)))
+                #   map aperture to 2D
+                for ii in range(np.shape(blk_aper)[0]):
+                    indx = abs(xVec - blk_aper[ii,0]).argmin()
+                    indz = abs(zVec - blk_aper[ii,2]).argmin()
+                    blk_aper2D[indz, indx] = blk_aper[ii,3]
+                #   calculate equivalent aperture for the minimum cross-section
+                nn = []
+                aa = []
+                if blk_range[n_blk][4] == 'x+' or blk_range[n_blk][4] == 'x-':
+                    for ii in range(len(xVec)):
+                        slice = blk_aper2D[:,ii]
+                        n_elem = 0
+                        a_elem = 0
+                        for jj in range(len(zVec)):
+                            if not np.isnan(slice[jj]):
+                                a_elem += blk_aper2D[jj,ii] ** 3.0
+                                n_elem += 1
+                        if n_elem > 0:
+                            nn.append(ii)
+                            aa.append((a_elem/n_elem)**(1.0/3.0))
+                    aa = np.array(aa)
+                    nn = np.array(nn)
+                    #   find the x-value with the minimum equivalent aperture
+                    min_x = xVec[nn[aa.argmin()]]
+                    min_aper = np.amin(aa)
+                    print(' >>> Block checking : minimum eq. aperture = ',min_aper,' at x = ',min_x)
+                    #   set aperture of the isolated zone to the equivalent aperture
+                    if blk_range[n_blk][4] == 'x-':
+                        for ii in range(np.shape(aper)[0]):
+                            if aper[ii,0] < min_x and aper[ii,3] >= min_aper * coef:
+                                aper[ii,3] = min_aper * coef
+                    elif blk_range[n_blk][4] == 'x+':
+                        for ii in range(np.shape(aper)[0]):
+                            if aper[ii,0] > min_x and aper[ii,3] > min_aper * coef:
+                                aper[ii,3] = min_aper * coef
+                elif blk_range[n_blk][4] == 'z+' or blk_range[n_blk][4] == 'z-':
+                    for ii in range(len(zVec)):
+                        slice = blk_aper2D[ii,:]
+                        n_elem = 0
+                        a_elem = 0
+                        for jj in range(len(xVec)):
+                            if not np.isnan(slice[jj]):
+                                a_elem += blk_aper2D[ii,jj] ** 3.0
+                                n_elem += 1
+                        if n_elem > 0:
+                            nn.append(ii)
+                            aa.append((a_elem/n_elem)**(1.0/3.0))
+                    aa = np.array(aa)
+                    nn = np.array(nn)
+                    #   find the x-value with the minimum equivalent aperture
+                    min_z = zVec[nn[aa.argmin()]]
+                    min_aper = np.amin(aa)
+                    print(' >>> Block checking : minimum eq. aperture = ',min_aper,' at z = ',min_z)
+                    #   set aperture of the isolated zone to the equivalent aperture
+                    if blk_range[n_blk][4] == 'z-':
+                        for ii in range(np.shape(aper)[0]):
+                            if aper[ii,2] < min_z and aper[ii,3] > min_aper * coef:
+                                aper[ii,3] = min_aper * coef
+                    elif blk_range[n_blk][4] == 'z+':
+                        for ii in range(np.shape(aper)[0]):
+                            if aper[ii,2] > min_z and aper[ii,3] > min_aper * coef:
+                                aper[ii,3] = min_aper * coef
+                else:
+                    raise ValueError("Currently only supports x-sweep!")
 
-        for n_blk in range(len(blk_range)):
-            #   extract aperture within the manually-selected isolated region
-            blk_aper = []
-            for ii in range(np.shape(aper)[0]):
-                if aper[ii,0] > blk_range[n_blk][0] and aper[ii,0] < blk_range[n_blk][1]:
-                    if aper[ii,2] > blk_range[n_blk][2] and aper[ii,2] < blk_range[n_blk][3]:
-                        blk_aper.append([aper[ii,0],aper[ii,1],aper[ii,2],aper[ii,3]])
-            blk_aper = np.array(blk_aper)
-            xVec = np.unique(blk_aper[:,0])
-            zVec = np.unique(blk_aper[:,2])
-            blk_aper2D = np.nan * np.ones((len(zVec), len(xVec)))
-            #   map aperture to 2D
-            for ii in range(np.shape(blk_aper)[0]):
-                indx = abs(xVec - blk_aper[ii,0]).argmin()
-                indz = abs(zVec - blk_aper[ii,2]).argmin()
-                blk_aper2D[indz, indx] = blk_aper[ii,3]
-            #   calculate equivalent aperture for the minimum cross-section
-            nn = []
-            aa = []
-            if blk_range[n_blk][4] == 'x+' or blk_range[n_blk][4] == 'x-':
-                for ii in range(len(xVec)):
-                    slice = blk_aper2D[:,ii]
-                    n_elem = 0
-                    a_elem = 0
-                    for jj in range(len(zVec)):
-                        if not np.isnan(slice[jj]):
-                            a_elem += blk_aper2D[jj,ii] ** 3.0
-                            n_elem += 1
-                    if n_elem > 0:
-                        nn.append(ii)
-                        aa.append((a_elem/n_elem)**(1.0/3.0))
-                aa = np.array(aa)
-                nn = np.array(nn)
-                #   find the x-value with the minimum equivalent aperture
-                min_x = xVec[nn[aa.argmin()]]
-                min_aper = np.amin(aa)
-                print(' >>> Block checking : minimum eq. aperture = ',min_aper,' at x = ',min_x)
-                #   set aperture of the isolated zone to the equivalent aperture
-                if blk_range[n_blk][4] == 'x-':
-                    for ii in range(np.shape(aper)[0]):
-                        if aper[ii,0] < min_x and aper[ii,3] >= min_aper * coef:
-                            aper[ii,3] = min_aper * coef
-                elif blk_range[n_blk][4] == 'x+':
-                    for ii in range(np.shape(aper)[0]):
-                        if aper[ii,0] > min_x and aper[ii,3] > min_aper * coef:
-                            aper[ii,3] = min_aper * coef
-            elif blk_range[n_blk][4] == 'z+' or blk_range[n_blk][4] == 'z-':
-                for ii in range(len(zVec)):
-                    slice = blk_aper2D[ii,:]
-                    n_elem = 0
-                    a_elem = 0
-                    for jj in range(len(xVec)):
-                        if not np.isnan(slice[jj]):
-                            a_elem += blk_aper2D[ii,jj] ** 3.0
-                            n_elem += 1
-                    if n_elem > 0:
-                        nn.append(ii)
-                        aa.append((a_elem/n_elem)**(1.0/3.0))
-                aa = np.array(aa)
-                nn = np.array(nn)
-                #   find the x-value with the minimum equivalent aperture
-                min_z = zVec[nn[aa.argmin()]]
-                min_aper = np.amin(aa)
-                print(' >>> Block checking : minimum eq. aperture = ',min_aper,' at z = ',min_z)
-                #   set aperture of the isolated zone to the equivalent aperture
-                if blk_range[n_blk][4] == 'z-':
-                    for ii in range(np.shape(aper)[0]):
-                        if aper[ii,2] < min_z and aper[ii,3] > min_aper * coef:
-                            aper[ii,3] = min_aper * coef
-                elif blk_range[n_blk][4] == 'z+':
-                    coef = 2.5
-                    for ii in range(np.shape(aper)[0]):
-                        if aper[ii,2] > min_z and aper[ii,3] > min_aper * coef:
-                            aper[ii,3] = min_aper * coef
-            else:
-                raise ValueError("Currently only supports x-sweep!")
-
-        # remove large aperture due to proppants
-        geos3d, xx, zz = self.convert_to_3D_slice(aper, 8.0)
-        if blk_key == 'upshi3':
-            for kk in range(50,80):
-                geos3d[63,kk] = 0.66*geos3d[62,kk] + 0.34*geos3d[65,kk]
-                geos3d[64,kk] = 0.34*geos3d[62,kk] + 0.66*geos3d[65,kk]
-            # for ii in range(40,45):
-            #     for kk in range(50,65):
-            #         if geos3d[ii,kk] > 0:
-            #             geos3d[ii,kk] = geos3d[ii,kk] + 1e-5
-            # for kk in range(50,65):
-            #     if geos3d[45,kk] > 3e-4:
-            #         geos3d[45,kk] = 3e-4
-        elif blk_key == 'upshi2':
-            for kk in range(40,70):
-                geos3d[62,kk] = 0.75*geos3d[61,kk] + 0.25*geos3d[65,kk]
-                geos3d[63,kk] = 0.5*geos3d[61,kk] + 0.5*geos3d[65,kk]
-                geos3d[64,kk] = 0.25*geos3d[61,kk] + 0.75*geos3d[65,kk]
-            for ii in range(40,45):
-                for kk in range(50,65):
-                    if geos3d[ii,kk] > 0:
-                        geos3d[ii,kk] = geos3d[ii,kk] + 1e-5
-        elif blk_key == 'upshi1':
-            for kk in range(45,75):
-                geos3d[61,kk] = 0.75*geos3d[60,kk] + 0.25*geos3d[64,kk]
-                geos3d[62,kk] = 0.5*geos3d[60,kk] + 0.5*geos3d[64,kk]
-                geos3d[63,kk] = 0.25*geos3d[60,kk] + 0.75*geos3d[64,kk]
-            for ii in range(40,45):
-                for kk in range(55,65):
-                    if geos3d[ii,kk] > 0:
-                        geos3d[ii,kk] = geos3d[ii,kk] + 1e-5
-        aper = self.convert_to_1D(geos3d, xx, zz, 8.0)
+            # remove large aperture due to proppants
+            # geos3d, xx, zz = self.convert_to_3D_slice(aper, 8.0)
+            # if blk_key == 'upshi3':
+            #     for kk in range(50,80):
+            #         geos3d[63,kk] = 0.66*geos3d[62,kk] + 0.34*geos3d[65,kk]
+            #         geos3d[64,kk] = 0.34*geos3d[62,kk] + 0.66*geos3d[65,kk]
+            #     # for ii in range(40,45):
+            #     #     for kk in range(50,65):
+            #     #         if geos3d[ii,kk] > 0:
+            #     #             geos3d[ii,kk] = geos3d[ii,kk] + 1e-5
+            #     # for kk in range(50,65):
+            #     #     if geos3d[45,kk] > 3e-4:
+            #     #         geos3d[45,kk] = 3e-4
+            # elif blk_key == 'upshi2':
+            #     for kk in range(40,70):
+            #         geos3d[62,kk] = 0.75*geos3d[61,kk] + 0.25*geos3d[65,kk]
+            #         geos3d[63,kk] = 0.5*geos3d[61,kk] + 0.5*geos3d[65,kk]
+            #         geos3d[64,kk] = 0.25*geos3d[61,kk] + 0.75*geos3d[65,kk]
+            #     for ii in range(40,45):
+            #         for kk in range(50,65):
+            #             if geos3d[ii,kk] > 0:
+            #                 geos3d[ii,kk] = geos3d[ii,kk] + 1e-5
+            # elif blk_key == 'upshi1':
+            #     for kk in range(45,75):
+            #         geos3d[61,kk] = 0.75*geos3d[60,kk] + 0.25*geos3d[64,kk]
+            #         geos3d[62,kk] = 0.5*geos3d[60,kk] + 0.5*geos3d[64,kk]
+            #         geos3d[63,kk] = 0.25*geos3d[60,kk] + 0.75*geos3d[64,kk]
+            #     for ii in range(40,45):
+            #         for kk in range(55,65):
+            #             if geos3d[ii,kk] > 0:
+            #                 geos3d[ii,kk] = geos3d[ii,kk] + 1e-5
+            # aper = self.convert_to_1D(geos3d, xx, zz, 8.0)
 
         return aper
 
@@ -755,7 +757,7 @@ class Geos():
             new_mean = np.mean(out[actv,3])
             current_std = np.std(out[actv,3])
             iter = 0
-            while abs(new_mean - targ_avg)/targ_avg > 0.05:
+            while abs(new_mean - targ_avg)/targ_avg > 0.01:
                 for ii in range(np.shape(out)[0]):
                     if actv[ii] == 1:
                         out[ii,3] = data[ii,3] - (np.mean(data[actv,3]) - targ_avg)
@@ -764,11 +766,12 @@ class Geos():
                     coeff = targ_std / np.std(data[actv,3])
                     out[actv,3] = (out[actv,3] - new_mean) * coeff + new_mean
                 # Iterate to remove small aperture
-                for ii in range(np.shape(out)[0]):
-                    if actv[ii] == 1 and out[ii,3] <= min_aper:
-                        out[ii,3] = min_aper
+                # for ii in range(np.shape(out)[0]):
+                #     if actv[ii] == 1 and out[ii,3] <= min_aper:
+                #         out[ii,3] = min_aper
                 new_mean = np.mean(out[actv,3])
-                print('Scaling GEOS: iter ',iter,' aperture has mean, std = ',np.mean(out[actv,3]),np.std(out[actv,3]))
+                print('   >>> Scaling GEOS: iter ',iter,' aperture has mean, std, min = ',
+                    np.mean(out[actv,3]),np.std(out[actv,3]),np.nanmin(out[actv,3]))
                 iter += 1
                 if iter > 10:
                     break
@@ -857,6 +860,59 @@ class Incon():
                     np.nanstd(out1d),np.nanmax(out1d),np.nanmin(out1d),')')
         return out1d
 
+    def secf_model(self, data, elem, geos_aper, incon, minc_perm, minc_zone):
+        """ Assign element-by-element minc permeability
+
+        Args:
+            minc_perm (list)    : [[origin], [Lx,Ly], aper_max, aper_min, kx/ky, kmin]
+            ic_matx (list)      : initial condition for the matrix
+
+        """
+        out = []
+        origin = minc_perm[0]
+        x0 = minc_perm[0][0]
+        y0 = minc_perm[0][1]
+        Lx = minc_perm[1][0]
+        Ly = minc_perm[1][1]
+        isotropy_ratio = minc_perm[4]
+        geos_copy = copy.deepcopy(geos_aper)
+        # calculate coefficients
+        b = minc_perm[2]
+        k1 = (minc_perm[3] - b) / Lx
+        aper_minc = lambda x : k1*x + b
+        # get x-z range of the fracture from geos
+        for ii in range(self.Nele):
+            if ii % 100000 == 0:
+                print(ii, np.shape(geos_copy))
+            if elem[ii][1] in minc_zone:
+                elem_x = float(elem[ii][4])
+                elem_y = float(elem[ii][5])
+                elem_z = float(elem[ii][6])
+                flag = 0
+                for row in range(np.shape(geos_copy)[0]):
+                    if abs(geos_copy[row,0] - elem_x) <= 3.0:
+                        if abs(geos_copy[row,2] - elem_z) <= 2.0:
+                            flag = 1
+                            break
+
+                if flag == 1:
+                    xe = abs(elem_x - x0)
+                    ye = abs(elem_y - y0)
+                    if aper_minc(xe) < 0.0:
+                        perm = 0.0
+                    else:
+                        perm = aper_minc(xe) * aper_minc(xe) / 12.0
+                    if perm < minc_perm[5]:
+                        perm = minc_perm[5]
+                    data[ii,0] = incon['porosity'][1]
+                    data[ii,1] = perm
+                    data[ii,2] = incon['pressure'][1]
+                    data[ii,3] = incon['gor'][1]
+                    data[ii,4] = incon['saturation'][1]
+                    data[ii,5] = incon['temperature'][1]
+        return data
+
+
 """
     ============================================================================
                                 End of Class 'Incon'
@@ -878,13 +934,21 @@ class Input():
         self.Ncon = len(conn)
         self.use_minc = use_minc
 
-    def write_incon(self, data, state, zone, isfrac, perm0):
-        """ Write the INCON file for inserted geos data """
+    def write_incon(self, data, state, zone, isfrac, secf):
+        """
+            Write the INCON file for inserted geos data (Oil code)
+
+            ky = [ky for matrix, ky for srv]
+        """
         fid = open('INCON', 'w')
         fid.write('INCON\n')
         num_blocks = 0
+        eid_out = []
+        ky = secf[4]
+        kmin = secf[5]
         for ii in range(0,len(self.elem)):
-            if self.elem[ii][1] in zone and self.elem[ii][7] == 0 and isfrac[ii] == 1:
+            # if self.elem[ii][1] in zone and self.elem[ii][7] == 0 and isfrac[ii] == 1:
+            if self.elem[ii][1] in zone:
                 eid = self.elem[ii][0]
                 poro = "{:.8E}".format(data[ii,0])
                 perm = "{:.8E}".format(data[ii,1])
@@ -892,17 +956,76 @@ class Input():
                 gaor = "{:.3E}".format(data[ii,3])
                 sato = "{:.3E}".format(data[ii,4])
                 temp = "{:.3E}".format(data[ii,5])
-                perm0str = "{:.8E}".format(perm0)
+                if isfrac[ii] == 1:
+                    if ky[0] < 1e-5:
+                        perm0str = "{:.8E}".format(ky[0])
+                    else:
+                        perm0str = "{:.8E}".format(np.maximum(data[ii,1]/ky[0], kmin))
+                else:
+                    if ky[1] < 1e-5:
+                        perm0str = "{:.8E}".format(ky[1])
+                    else:
+                        perm0str = "{:.8E}".format(np.maximum(data[ii,1]/ky[1], kmin))
                 # line1: element, porosity(3), state(4), permeability(5-7)
                 fid.write(f"{eid}           {poro}  {state}                                     {perm} {perm0str} {perm}")
                 fid.write('\n')
                 # line2: primary variables (2,4,6)
                 fid.write(f"           {pres}           {gaor}           {sato}           {temp}")
                 fid.write('\n')
+                eid_out.append(eid)
+                num_blocks += 1
+            # elif self.elem[ii][1] in zone and data[ii,1] != perm0:
+            #     eid = self.elem[ii][0]
+            #     poro = "{:.8E}".format(data[ii,0])
+            #     perm = "{:.8E}".format(data[ii,1])
+            #     pres = "{:.3E}".format(data[ii,2])
+            #     gaor = "{:.3E}".format(data[ii,3])
+            #     sato = "{:.3E}".format(data[ii,4])
+            #     temp = "{:.3E}".format(data[ii,5])
+            #     if ky[1] < 1e-5:
+            #         perm0str = "{:.8E}".format(ky[1])
+            #     else:
+            #         perm0str = "{:.8E}".format(perm/ky[1])
+            #     # line1: element, porosity(3), state(4), permeability(5-7)
+            #     fid.write(f"{eid}           {poro}  {state}                                     {perm} {perm0str} {perm}")
+            #     fid.write('\n')
+            #     # line2: primary variables (2,4,6)
+            #     fid.write(f"           {pres}           {gaor}           {sato}           {temp}")
+            #     fid.write('\n')
+            #     eid_out.append(eid)
+            #     num_blocks += 1
+        fid.write("<<<")
+        fid.close()
+        print("Total number of grid blocks in INCON = ",num_blocks)
+        return eid_out
+
+    def write_incon_hyd(self, data, state, zone, isfrac, perm0):
+        """ Write the INCON file for inserted geos data (Hydrate code) """
+        fid = open('INCON', 'w')
+        fid.write('INCON\n')
+        num_blocks = 0
+        eid_out = []
+        for ii in range(0,len(self.elem)):
+            if self.elem[ii][1] in zone and self.elem[ii][7] == 0 and isfrac[ii] == 1:
+                eid = self.elem[ii][0]
+                poro = "{:.8E}".format(data[ii,0])
+                perm = "{:.8E}".format(data[ii,1])
+                pres = "{:.3E}".format(data[ii,2])
+                sato = "{:.3E}".format(data[ii,3])
+                temp = "{:.3E}".format(data[ii,4])
+                perm0str = "{:.8E}".format(perm0)
+                # line1: element, porosity(3), state(4), permeability(5-7)
+                fid.write(f"{eid}           {poro}  {state}                                     {perm} {perm0str} {perm}")
+                fid.write('\n')
+                # line2: primary variables (2,4,6)
+                fid.write(f"           {pres}           {sato}           {temp}")
+                fid.write('\n')
+                eid_out.append(eid)
                 num_blocks += 1
         fid.write("<<<")
         fid.close()
         print("Total number of grid blocks in INCON = ",num_blocks)
+        return eid_out
 
     def write_memory(self, finput):
         fin = open(finput, 'r')
@@ -946,12 +1069,12 @@ class Input():
                             cpCoeff = self.capPresParam(ind_cp)
                             fout.write(f"{reg_name2}    2   {rho}   {phi}  {perm}  {perm}  {perm}       4.0    1000.0\n")
                             fout.write(f"   {comp}               1.5e0\n")
-                            fout.write(f"    {ind_rp}      ")
+                            fout.write(f"    {abs(ind_rp)}      ")
                             for ii in range(len(rpCoeff)):
                                 coef = "{:7.3E}".format(rpCoeff[ii])
                                 fout.write(f"{coef} ")
                             fout.write("\n")
-                            fout.write(f"    {ind_cp}      ")
+                            fout.write(f"    {abs(ind_cp)}      ")
                             for ii in range(len(cpCoeff)):
                                 coef = "{:7.3E}".format(cpCoeff[ii])
                                 fout.write(f"{coef} ")
@@ -969,12 +1092,12 @@ class Input():
                         cpCoeff = self.capPresParam(ind_cp)
                         fout.write(f"{reg_name}    2   {rho}   {phi}  {perm}  {perm}  {perm}       4.0    1000.0\n")
                         fout.write(f"   {comp}               1.5e0\n")
-                        fout.write(f"    {ind_rp}      ")
+                        fout.write(f"    {abs(ind_rp)}      ")
                         for ii in range(len(rpCoeff)):
                             coef = "{:7.3E}".format(rpCoeff[ii])
                             fout.write(f"{coef} ")
                         fout.write("\n")
-                        fout.write(f"    {ind_cp}      ")
+                        fout.write(f"    {abs(ind_cp)}      ")
                         for ii in range(len(cpCoeff)):
                             coef = "{:7.3E}".format(cpCoeff[ii])
                             fout.write(f"{coef} ")
@@ -994,12 +1117,12 @@ class Input():
                     cpCoeff = self.capPresParam(ind_cp)
                     fout.write(f"{reg_name}    2   {rho}   {phi}  {perm}  {perm}  {perm}       4.0    1000.0\n")
                     fout.write(f"   {comp}               1.5e0\n")
-                    fout.write(f"    {ind_rp}      ")
+                    fout.write(f"    {abs(ind_rp)}      ")
                     for ii in range(len(rpCoeff)):
                         coef = "{:7.3E}".format(rpCoeff[ii])
                         fout.write(f"{coef} ")
                     fout.write("\n")
-                    fout.write(f"    {ind_cp}      ")
+                    fout.write(f"    {abs(ind_cp)}      ")
                     for ii in range(len(cpCoeff)):
                         coef = "{:7.3E}".format(cpCoeff[ii])
                         fout.write(f"{coef} ")
@@ -1124,10 +1247,12 @@ class Input():
 
     def relPermParam(self, num):
         if num == 8:
-            param = [0.45, 0.15, 0.01, 2.0, 2.0]
-            # param = [0.4, 0.21, 0.01, 2.0, 2.0]
+            # param = [0.45, 0.15, 0.01, 2.0, 2.0]
+            param = [0.42, 0.15, 0.01, 2.0, 2.0]
+        elif num == -8:
+            param = [0.05, 0.05, 0.0, 2.0, 2.0]
         elif num == 6:
-            param = [0.05,0.05,0.0,2.0]
+            param = [0.01,0.01,0.0,1.0,1.0]
         else:
             raise ValueError('Relative permeability equation number is not available!!!')
         return param
@@ -1136,8 +1261,11 @@ class Input():
         if num == 5:
             param = []
         elif num == 8:
-            # param = [0.4, 1.85, 10.0, 11.0, 0.21]
-            param = [0.45, 1.85, 10.0, 11.0, 0.15]
+            # param = [0.45, 1.85, 10.0, 11.0, 0.15]
+            param = [0.4, 1.85, 10.0, 11.0, 0.2]
+        elif num == -8:
+            # param = [0.05, 1.85, 10.0, 11.0, 0.49]
+            param = [0.05, 1.85, 10.0, 11.0, 0.05]
         else:
             raise ValueError('Capillary pressure equation number is not available!!!')
         return param
@@ -1146,3 +1274,29 @@ class Input():
                                 End of Class 'Input'
     ============================================================================
 """
+
+
+# !***********************************************************************
+# !*                                                                     *
+# !*    3-phase capillary pressure functions of Parker et al. [1987]     *
+# !*                                                                     *
+# !***********************************************************************
+# !
+# !
+#       CASE (8)
+#          Swirr = media(nmat)%PcapParam(1)
+#          Soirr = media(nmat)%PcapParam(5)
+#
+#
+# !***********************************************************************
+# !*                                                                     *
+# !*     Three-phase relative permeability functions of Stone [1970],    *
+# !*                     as modified by Aziz [1979]                      *
+# !*                                                                     *
+# !***********************************************************************
+# !
+# !
+#       CASE (6,8,10)
+#          Swirr = media(nmat)%RelPermParam(1)
+#          Soirr = media(nmat)%RelPermParam(2)
+#          Sgirr = media(nmat)%RelPermParam(3)
