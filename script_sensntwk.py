@@ -30,6 +30,8 @@ use_minc = True
 use_secf = True
 #   Use closed aperture or not
 use_clos = False
+#   Remove singularities in aperture
+use_sing = True
 #   Builds fracture-conforming mesh or not
 remesh = True
 
@@ -39,11 +41,11 @@ remesh = True
 #   Simulation ID
 #   This ID allows the user to write problem-specific settings. To build a new
 #   test problem, the user should define a new ID
-sim_id = '09L'
+sim_id = '4SU'
 #   Fracture ID
 #   This ID determines which fracture (among the 5 fractures in a typical GEOS
 #   simulation) to be modeled. It ranges from 1 to 5.
-ifrac = 2
+ifrac = 3
 #   Mean and standard deviation of the target aperture field [m]
 #   If these values are not None, the GEOS aperture will be scaled to obtain
 #   certain mean and standard deviation. For example, to simulate a homogeneous
@@ -53,7 +55,8 @@ std_aper = None
 #   Blockage ID
 #   This ID allows the user to set up specific instructions to remove isolated
 #   fracture regions for a given fracture.
-blk_key = 'up09l2'
+blk_key = 'up4su3'
+# blk_key = None
 #   Default domain dimensions
 #   NX, NY, NZ of the model domain.
 dim = [117, 35, 45]
@@ -74,15 +77,26 @@ t_save = [8.64e4, 8.64e5, 8.64e6, 8.64e7, 1.296e8]
 #   Note : This also shows how some options can be modified for specific test
 #           problems by changing sim_id.
 if sim_id == '09L':
+    loc_well = [357.0, 8.0, -90.0]
     boundary = [1, ['HWELL', [354.0, 360.0, 0.0, 16.0, -92.0, -88.0,
                     ['properties', 2.6e3, 1.0, 1e-4, 0e-8, 6, 5]]]
                 ]
     dim = [117, 35, 45]
 elif sim_id == '09H' or sim_id == 'SMH':
+    loc_well = [357.0, 8.0, -250.0]
     boundary = [1, ['HWELL', [354.0, 360.0, 0.0, 16.0, -252.0, -248.0,
                     ['properties', 2.6e3, 1.0, 1e-4, 0e-8, 6, 5]]]
                 ]
     dim = [117, 35, 85]
+elif sim_id == '4SU':
+    loc_well = [357.0, 8.0, -210.0]
+    boundary = [1, ['HWELL', [354.0, 360.0, 0.0, 16.0, -212.0, -208.0,
+                    ['properties', 2.6e3, 1.0, 1e-4, 0e-8, 6, 5]]]
+                ]
+    # boundary = [1, ['HWELL', [354.0, 360.0, 0.0, 16.0, -172.0, -168.0,
+    #                 ['properties', 2.6e3, 1.0, 1e-4, 0e-8, 6, 5]]]
+    #             ]
+    dim = [117, 35, 70]
 #   Medium properties
 #   These information will be written to the ROCKS block of TOUGH
 #   The structure of 'region' is as follows:
@@ -134,7 +148,10 @@ else:
 #       min_aper = Minimum aperture at L from the well [m].
 #       kx/ky = Anisotropy ratio for [HF, SRV].
 #       min_perm = Minimum permeability a secondary fracture can get [m^2].
-secf = [[357.0, 8.0], [100.0, 7.0], 1e-7, 1e-10, [1e-21, 1000.0], 1e-21]
+#       radius = radius of near-well conductive zone (with large ky) [m]
+# secf = [[loc_well[0], loc_well[2]], [75.0, 7.0], 2.2e-7, 1e-10, [1e-21, 10000.0], 1e-21, 1000.0]
+secf = [[loc_well[0], loc_well[2]], [100.0, 150.0], 2.5e-7, 1e-10, [1e-21, 1000.0], 1e-21]
+# secf = [[loc_well[0], loc_well[2]], [80.0, 40.0], 1e3, 1e-10, [1e-21, 100.0], 1e-21]
 
 """
     Information on domain discretization
@@ -161,7 +178,7 @@ discret = {
 #   This will be the INDOM block of the TOUGH INPUT
 #   Each row of indom has the format : ['AqO', P, GOR, So, T] or ['AOG', P, Sg, So, T]
 indom = {
-            'Default'   :   ['AqO', 2.5e7, 3.0e3, 0.55, 65.0],
+            'Default'   :   ['AqO', 2.5e7, 2.8e3, 0.57, 65.0],
             'HWELL'     :   [1, 'AOG', 7.5e6, 0.4, 0.4, 65.0]
 }
 
@@ -175,8 +192,8 @@ incon = {
             'porosity'      :   [0.07, 0.9, 1.0],
             'permeability'  :   [1e-21, 1e-21, 1e-4],
             'pressure'      :   [2.5e7, 2.5e7, 5.5e6],
-            'gor'           :   [3.0e3, 3.0e3, 0.4],
-            'saturation'    :   [0.55, 0.55, 0.4],
+            'gor'           :   [2.8e3, 2.8e3, 0.4],
+            'saturation'    :   [0.57, 0.57, 0.4],
             'temperature'   :   [65.0, 65.0, 65.0]
 }
 
@@ -204,7 +221,11 @@ if avg_aper != None and std_aper != None:
 elif use_clos:
     fprop = 'clos_aper'
 else:
-    fprop = 'prop_aper'
+    if use_sing:
+        fprop = 'sing_aper'
+    else:
+        fprop = 'prop_aper'
+        # fprop = 'med5_aper'
 
 
 if sim_id == '09L':
@@ -216,6 +237,9 @@ elif sim_id == '09H':
 elif sim_id == 'SMH':
     fgeos = 'GEOS03_samepump25_'+fprop+'.csv'
     offset = [354.0, ygeos[ifrac], -280.0]
+elif sim_id == '4SU':
+    fgeos = 'GEOS4U_ups4u_'+fprop+'.csv'
+    offset = [354.0, ygeos[ifrac], -240.0]
 
 #   Number of downscaled HFs in a swarm. This value should be consistent with
 #   the value GEOS uses.
@@ -246,7 +270,13 @@ blk_range = {
     'up09h3'   :    [[180.0, 660.0, -200.0, -80.0, 'z+']],
     'up03h3'   :    [[180.0, 660.0, -200.0, -80.0, 'z+'],
                     [330.0, 390.0, -264.0, -248.0, 'z-'],
-                    [180.0, 300.0, -320.0, -200.0, 'x-']]
+                    [180.0, 300.0, -320.0, -200.0, 'x-']],
+    'up4su3'   :    [[100.0, 700.0, -242.0, -212.0, 'z-'],
+                    [250.0, 300.0, -190.0, -20.0, 'x-'],
+                    [420.0, 470.0, -190.0, -20.0, 'x+']],
+    # 'up4su3'   :    [[100.0, 700.0, -242.0, -212.0, 'z-']],
+    'up4su2'   :    [[100.0, 700.0, -242.0, -212.0, 'z-'],
+                    [250.0, 300.0, -120.0, -20.0, 'x-']]
 }
 
 
@@ -270,6 +300,7 @@ map = mesh.neighbor_map(elem, conn)
 conx = mesh.get_boundary_id(elem, conn, map)
 
 if use_geos:
+    print(' >>>>> FILE NAME :',fgeos)
     # Initialize dict for incon variables
     incon_var = {}
     for key in ikeys:
@@ -304,11 +335,33 @@ if use_geos:
     if sim_id == 'SMH' and ifrac == 3 and blk_key == 'up03h3':
         for ii in range(np.shape(geos_aper)[0]):
             if geos_aper[ii,2] > -166.0:
-                geos_aper[ii,3] = np.nan
+                geos_aper[ii,3] = 1e-4
             if geos_aper[ii,2] < -262.0:
-                geos_aper[ii,3] = np.nan
+                geos_aper[ii,3] = 1e-4
             if geos_aper[ii,0] < 231.0:
-                geos_aper[ii,3] = np.nan
+                geos_aper[ii,3] = 1e-4
+    elif sim_id == '4SU' and ifrac == 3:
+        print(' ----------> Special treatment for 4SU-3!!!')
+        aper_iso = 1.5e-4
+        for ii in range(np.shape(geos_aper)[0]):
+            if geos_aper[ii,0] > 72*6 and geos_aper[ii,0] < 86*6 and geos_aper[ii,2] == -170.0:
+                geos_aper[ii,3] = aper_iso
+            if geos_aper[ii,0] > 29*6 and geos_aper[ii,0] < 44*6 and geos_aper[ii,2] == -178.0:
+                geos_aper[ii,3] = aper_iso
+            if geos_aper[ii,0] > 43*6 and geos_aper[ii,0] < 57*6 and geos_aper[ii,2] == -266.0:
+                geos_aper[ii,3] = aper_iso
+            if geos_aper[ii,0] > 53*6 and geos_aper[ii,0] < 73*6 and geos_aper[ii,2] == -262.0:
+                geos_aper[ii,3] = aper_iso
+            if geos_aper[ii,0] > 68*6 and geos_aper[ii,0] < 80*6 and geos_aper[ii,2] == -258.0:
+                geos_aper[ii,3] = aper_iso
+            if geos_aper[ii,0] > 69*6 and geos_aper[ii,0] < 76*6 and geos_aper[ii,2] == -162.0:
+                geos_aper[ii,3] = aper_iso*1.5
+            if geos_aper[ii,0] > 70*6 and geos_aper[ii,0] < 90*6 and geos_aper[ii,2] == -166.0:
+                geos_aper[ii,3] = aper_iso
+            if geos_aper[ii,0] > 45*6 and geos_aper[ii,0] < 51*6 and geos_aper[ii,2] == -170.0:
+                geos_aper[ii,3] = aper_iso*1.5
+            if geos_aper[ii,0] > 42*6 and geos_aper[ii,0] < 51*6 and geos_aper[ii,2] == -174.0:
+                geos_aper[ii,3] = aper_iso*1.5
 
     # remove extreme aperture values
     for ii in range(np.shape(geos_aper)[0]):

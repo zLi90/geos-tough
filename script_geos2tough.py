@@ -4,11 +4,15 @@ import numpy as np
 import silo_parser as sp
 import matplotlib.pyplot as plt
 from geos_convert import *
+import copy
 
 savedat = True
 useprop = True
-getstress = True
-hf_clos = True
+getstress = False
+hf_clos = False
+rm_singularity = False
+med_filt = True
+fsize = 5
 #
 #   Select the GEOS results to be used
 #
@@ -24,11 +28,11 @@ hf_clos = True
 # fdir = 'GEOS_upscaling202008/LowLandingPoint_b/sub'
 # offset = [350.0, 40.0, -120.0]
 
-''' < upscaling with low landing point + 3D stress > '''
-id = 'upslo'
-fname = 'FiveFrac_base_571491'
-fdir = 'GEOS202009/4SM_LowLandingPoint/sub'
-offset = [350.0, 40.0, -120.0]
+# ''' < upscaling with low landing point + 3D stress > '''
+# id = 'upslo'
+# fname = 'FiveFrac_base_571491'
+# fdir = 'GEOS202009/4SM_LowLandingPoint/sub'
+# offset = [350.0, 40.0, -120.0]
 
 # ''' < upscaling with high landing point + 3D stress > '''
 # id = 'upshi'
@@ -36,11 +40,11 @@ offset = [350.0, 40.0, -120.0]
 # fdir = 'GEOS202009/4SM_HighLandingPoint/sub'
 # offset = [350.0, 40.0, -280.0]
 
-# ''' < upscaling with well 4SU > '''
-# id = 'ups4u'
-# fname = 'FiveFrac_base_788235'
-# fdir = '4SU_40/sub'
-# offset = [350.0, 40.0, -240.0]
+''' < upscaling with well 4SU > '''
+id = 'ups4u'
+fname = 'FiveFrac_base_788235'
+fdir = '4SU_40/sub'
+offset = [354.0, 40.0, -240.0]
 
 # ''' < high landing point + early flush > '''
 # id = 'hiflu1'
@@ -66,11 +70,17 @@ offset = [350.0, 40.0, -120.0]
 # fdir = 'GEOS_same_pumping202103/stage37_20210321/sub/'
 # offset = [350.0, 40.0, -120.0]
 
-savename = 'GEOS09_'+id+'_aper.csv'
+savename = 'GEOS4U_'+id+'_aper.csv'
 if useprop:
-    savename = 'GEOS09_'+id+'_clos_aper.csv'
+    savename = 'GEOS4U_'+id+'_prop_aper.csv'
+    if rm_singularity:
+        savename = 'GEOS4U_'+id+'_sing_aper.csv'
+    elif med_filt:
+        savename = 'GEOS4U_'+id+'_med'+str(fsize)+'_aper.csv'
+    if hf_clos:
+        savename = 'GEOS4U_'+id+'_clos_aper.csv'
 if getstress:
-    strename = 'GEOS09_'+id+'_stre.csv'
+    strename = 'GEOS4U_'+id+'_stre.csv'
 out_fields = ['Aperture','ProppantVolumeFraction','stressNOnFace']
 # a list of all available field names:
 # ['Aperture','FaceArea','Pressure','ProppantVolumeFraction','Volume','birthTime',
@@ -82,7 +92,7 @@ out_fields = ['Aperture','ProppantVolumeFraction','stressNOnFace']
 #
 y_frac = [8.0, 24.0, 40.0, 56.0, 72.0]
 dx = [6.0, 16.0, 4.0]
-xlim = [0.0, 700.0, 0.0, 80.0, -340.0, 0.0]
+xlim = [3.0, 699.0, 0.0, 80.0, -338.0, -2.0]
 # xlim = [0.0, 700.0, 0.0, 80.0, -276.0, 0.0]
 
 #
@@ -90,7 +100,7 @@ xlim = [0.0, 700.0, 0.0, 80.0, -340.0, 0.0]
 #
 y_plot = [0, 1, 2]
 fs = 12
-clim = [0.0, 0.02, 0.0, 0.6, 0.0, 0.002]
+clim = [0.0, 0.02, 0.0, 0.1, 0.0, 0.002]
 
 #
 #   Execution
@@ -142,6 +152,36 @@ print('   >>> GEOS Z: ',coord_geos['zz'])
 print('   >>> TOUGH X: ',coord['xx'])
 print('   >>> TOUGH Z: ',coord['zz'])
 
+if rm_singularity:
+    for col in range(np.shape(prop_aper3D)[1]):
+        slice = prop_aper3D[:,col,:]
+        slice0 = copy.deepcopy(slice)
+        dims = np.shape(slice)
+        for i1 in range(1,dims[0]-1):
+            for j1 in range(1,dims[1]-1):
+                local = np.sort(np.array([-slice0[i1,j1],
+                    -slice0[i1-1,j1],-slice0[i1+1,j1],-slice0[i1,j1-1],-slice0[i1,j1+1]]))
+                if np.count_nonzero(~np.isnan(local)) > 1:
+                    if slice0[i1,j1] == -np.nanmin(local):
+                        slice[i1,j1] = -local[1]
+        prop_aper3D[:,col,:] = slice
+elif med_filt:
+    r = int((fsize-1.0)/2.0)
+    for col in range(np.shape(prop_aper3D)[1]):
+        slice = prop_aper3D[:,col,:]
+        slice0 = copy.deepcopy(slice)
+        dims = np.shape(slice)
+        for i1 in range(r,dims[0]-r):
+            for j1 in range(r,dims[1]-r):
+                if not np.isnan(slice0[i1,j1]):
+                    local = slice0[i1-r:i1+r+1,j1-r:j1+r+1]
+                    slice[i1,j1] = np.nanmedian(local)
+        prop_aper3D[:,col,:] = slice
+
+
+    prop_aper = geos.convert_3D_to_1D(prop_aper3D, coord, offset)
+
+
 #
 #   Save data
 #
@@ -151,7 +191,6 @@ if savedat:
         #     if prop_aper[kk,2] < -220.0+280.0 and prop_aper[kk,3] < 2e-4:
         #         if prop_aper[kk,0] > 300.0-354.0 and prop_aper[kk,0] < 450.0-354.0:
         #             prop_aper[kk,3] = np.amax([2e-4, prop_aper[kk,3]])
-
         np.savetxt(savename, prop_aper, delimiter=',')
         if getstress:
             np.savetxt(strename, stre, delimiter=',')
@@ -209,17 +248,17 @@ for ii in range(len(y_plot)):
     plt.colorbar()
     ifig += 1
 
-    # plt.subplot(len(y_plot), 3, ifig)
-    # plt.imshow(np.flipud(np.transpose(prop_aper3D[:,y_plot[ii],:])),
-    #     vmin=clim[4], vmax=clim[5], interpolation='bilinear', cmap='jet')
-    # plt.colorbar()
-    # ifig += 1
-
     plt.subplot(len(y_plot), 3, ifig)
-    plt.imshow(np.flipud(np.transpose(-stre3D[:,y_plot[ii],:])),
-        vmin=0.0, vmax=4e7, interpolation='bilinear', cmap='jet')
+    plt.imshow(np.flipud(np.transpose(prop_aper3D[:,y_plot[ii],:])),
+        vmin=clim[4], vmax=clim[5], interpolation='bilinear', cmap='jet')
     plt.colorbar()
     ifig += 1
+
+    # plt.subplot(len(y_plot), 3, ifig)
+    # plt.imshow(np.flipud(np.transpose(-stre3D[:,y_plot[ii],:])),
+    #     vmin=0.0, vmax=4e7, interpolation='bilinear', cmap='jet')
+    # plt.colorbar()
+    # ifig += 1
 
 
 plt.figure(2)

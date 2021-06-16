@@ -860,26 +860,75 @@ class Incon():
                     np.nanstd(out1d),np.nanmax(out1d),np.nanmin(out1d),')')
         return out1d
 
+    def secf_model2(self, data, elem, geos_aper, incon, minc_perm, minc_zone):
+        """ Assign element-by-element minc permeability
+
+        Args:
+            minc_perm (list)    : [[origin], [r_secf,r_aiso], scaling_secf, aper_min, kx/ky, kmin]
+            ic_matx (list)      : initial condition for the matrix
+
+        """
+        origin = minc_perm[0]
+        r_secf = minc_perm[1][0]
+        scaling_secf = minc_perm[2]
+        # get x-z range of the fracture from geos
+        geos_copy = copy.deepcopy(geos_aper)
+        for ii in range(self.Nele):
+            if ii % 100000 == 0:
+                print(ii, np.shape(geos_copy))
+            if elem[ii][1] in minc_zone:
+                elem_x = float(elem[ii][4])
+                elem_y = float(elem[ii][5])
+                elem_z = float(elem[ii][6])
+                flag = 0
+                for row in range(np.shape(geos_copy)[0]):
+                    if abs(geos_copy[row,0] - elem_x) <= 3.0:
+                        if abs(geos_copy[row,2] - elem_z) <= 2.0:
+                            if not np.isnan(geos_copy[row,3]):
+                                flag = 1
+                                b_secf = geos_copy[row,3] / scaling_secf
+                                break
+                if flag == 1:
+                    xe = abs(elem_x - origin[0])
+                    ze = abs(elem_z - origin[1])
+                    dist = (xe**2.0 + ze**2.0)**0.5
+
+                    if dist < r_secf:
+                        perm = b_secf * b_secf / 12.0
+                        if perm < minc_perm[5]:
+                            perm = minc_perm[5]
+                    else:
+                        perm = minc_perm[5]
+
+                    data[ii,0] = incon['porosity'][1]
+                    data[ii,1] = perm
+                    data[ii,2] = incon['pressure'][1]
+                    data[ii,3] = incon['gor'][1]
+                    data[ii,4] = incon['saturation'][1]
+                    data[ii,5] = incon['temperature'][1]
+        return data
+
     def secf_model(self, data, elem, geos_aper, incon, minc_perm, minc_zone):
         """ Assign element-by-element minc permeability
 
         Args:
-            minc_perm (list)    : [[origin], [Lx,Ly], aper_max, aper_min, kx/ky, kmin]
+            minc_perm (list)    : [[origin], [Lx,Lz], aper_max, aper_min, kx/ky, kmin]
             ic_matx (list)      : initial condition for the matrix
 
         """
         out = []
         origin = minc_perm[0]
         x0 = minc_perm[0][0]
-        y0 = minc_perm[0][1]
+        z0 = minc_perm[0][1]
         Lx = minc_perm[1][0]
-        Ly = minc_perm[1][1]
+        Lz = minc_perm[1][1]
         isotropy_ratio = minc_perm[4]
         geos_copy = copy.deepcopy(geos_aper)
         # calculate coefficients
         b = minc_perm[2]
         k1 = (minc_perm[3] - b) / Lx
-        aper_minc = lambda x : k1*x + b
+        k2 = (minc_perm[3] - b) / Lz
+        aper_minc = lambda x, z : k1*x + k2*z + b
         # get x-z range of the fracture from geos
         for ii in range(self.Nele):
             if ii % 100000 == 0:
@@ -894,14 +943,19 @@ class Incon():
                         if abs(geos_copy[row,2] - elem_z) <= 2.0:
                             flag = 1
                             break
-
                 if flag == 1:
                     xe = abs(elem_x - x0)
-                    ye = abs(elem_y - y0)
-                    if aper_minc(xe) < 0.0:
-                        perm = 0.0
-                    else:
-                        perm = aper_minc(xe) * aper_minc(xe) / 12.0
+                    ze = abs(elem_z - z0)
+
+                    perm = 0.0
+                    if xe <= Lx and ze <= Lz:
+                        if aper_minc(xe, ze) < 0.0:
+                            perm = 0.0
+                        else:
+                            perm = aper_minc(xe, ze) * aper_minc(xe, ze) / 12.0
+                        # print(" (x, z) - aper, k = ",elem_x,elem_z,xe,ze,k1,k2,aper_minc(xe, ze))
+
+
                     if perm < minc_perm[5]:
                         perm = minc_perm[5]
                     data[ii,0] = incon['porosity'][1]
@@ -946,7 +1000,13 @@ class Input():
         eid_out = []
         ky = secf[4]
         kmin = secf[5]
+        origin = secf[0]
+        # radius = secf[6]
         for ii in range(0,len(self.elem)):
+            # calculate distance to the well
+            elem_x = float(self.elem[ii][4])
+            elem_z = float(self.elem[ii][6])
+            dist = ((elem_x - origin[0])**2.0 + (elem_z - origin[1])**2.0)**0.5
             # if self.elem[ii][1] in zone and self.elem[ii][7] == 0 and isfrac[ii] == 1:
             if self.elem[ii][1] in zone:
                 eid = self.elem[ii][0]
@@ -994,6 +1054,61 @@ class Input():
             #     fid.write('\n')
             #     eid_out.append(eid)
             #     num_blocks += 1
+        fid.write("<<<")
+        fid.close()
+        print("Total number of grid blocks in INCON = ",num_blocks)
+        return eid_out
+
+    def write_incon2(self, data, state, zone, isfrac, secf):
+        """
+            Write the INCON file for inserted geos data (Oil code)
+
+            ky = [ky for matrix, ky for srv]
+            minc_perm (list)    : [[origin], [r_secf,r_aiso], scaling_secf, aper_min, kx/ky, kmin]
+        """
+        fid = open('INCON', 'w')
+        fid.write('INCON\n')
+        num_blocks = 0
+        eid_out = []
+        ky = secf[4]
+        kmin = secf[5]
+        origin = secf[0]
+        radius = secf[1][1]
+        for ii in range(0,len(self.elem)):
+            # calculate distance to the well
+            elem_x = float(self.elem[ii][4])
+            elem_z = float(self.elem[ii][6])
+            dist = ((elem_x - origin[0])**2.0 + (elem_z - origin[1])**2.0)**0.5
+            # if self.elem[ii][1] in zone and self.elem[ii][7] == 0 and isfrac[ii] == 1:
+            if self.elem[ii][1] in zone:
+                eid = self.elem[ii][0]
+                poro = "{:.8E}".format(data[ii,0])
+                perm = "{:.8E}".format(data[ii,1])
+                pres = "{:.3E}".format(data[ii,2])
+                gaor = "{:.3E}".format(data[ii,3])
+                sato = "{:.3E}".format(data[ii,4])
+                temp = "{:.3E}".format(data[ii,5])
+                if isfrac[ii] == 1:
+                    if ky[0] < 1e-5:
+                        perm0str = "{:.8E}".format(ky[0])
+                    else:
+                        perm0str = "{:.8E}".format(np.maximum(data[ii,1]/ky[0], kmin))
+                else:
+                    if ky[1] < 1e-5:
+                        perm0str = "{:.8E}".format(ky[1])
+                    else:
+                        if dist <= radius or ky[0] >= 1e-5:
+                            perm0str = "{:.8E}".format(np.maximum(data[ii,1]/ky[1], kmin))
+                        else:
+                            perm0str = "{:.8E}".format(ky[0])
+                # line1: element, porosity(3), state(4), permeability(5-7)
+                fid.write(f"{eid}           {poro}  {state}                                     {perm} {perm0str} {perm}")
+                fid.write('\n')
+                # line2: primary variables (2,4,6)
+                fid.write(f"           {pres}           {gaor}           {sato}           {temp}")
+                fid.write('\n')
+                eid_out.append(eid)
+                num_blocks += 1
         fid.write("<<<")
         fid.close()
         print("Total number of grid blocks in INCON = ",num_blocks)
@@ -1248,7 +1363,7 @@ class Input():
     def relPermParam(self, num):
         if num == 8:
             # param = [0.45, 0.15, 0.01, 2.0, 2.0]
-            param = [0.42, 0.15, 0.01, 2.0, 2.0]
+            param = [0.41, 0.15, 0.01, 2.2, 2.0]
         elif num == -8:
             param = [0.05, 0.05, 0.0, 2.0, 2.0]
         elif num == 6:
