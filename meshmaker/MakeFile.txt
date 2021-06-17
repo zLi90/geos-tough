@@ -1,0 +1,16 @@
+Mine
+% ifort -o MM3.exe -O3 T_Utility_Functions.f90 Meshmaker_V3.f90 
+
+% ifort -g -debug full -traceback -check bounds -check uninit -check pointers -check output_conversion -check format -warn alignments -warn truncated_source -warn usage -ftrapuv -fp-stack-check -fpe0 -fpconstant -vec_report0 -diag-disable 8291 -diag-disable 8293 -warn unused -o MM3.exe -O3 T_Utility_Functions.f90 Meshmaker_V3.f90 
+
+% ifort -g -debug full -traceback -check bounds -check uninit -check pointers -check output_conversion -check format -warn alignments -warn truncated_source -warn usage -ftrapuv -fp-stack-check -fpe0 -fpconstant -vec_report0 -diag-disable 8291 -diag-disable 8293 -warn unused -o MM3g.exe -O3 T_Utility_Functions.f90 Meshmaker_V3g.f90 
+
+
+% ifort -o VTKc.exe -O3 Create_VTKc_V3.f90 
+% ifort -g -debug full -traceback -check bounds -check uninit -check pointers -check output_conversion -check format -warn alignments -warn truncated_source -warn usage -ftrapuv -fp-stack-check -fpe0 -fpconstant -vec_report0 -diag-disable 8291 -diag-disable 8293 -warn unused -o VTKc.exe -O3 Create_VTKc.f90 
+
+
+
+gfortran -g -Wall -Wextra -Wconversion -Wcharacter-truncation -Wline-truncation -Wsurprising -Waliasing -Wimplicit-interface -Wunused-parameter -pedantic -fbacktrace -fcheck=recursion -fcheck=all -ffpe-trap=zero,overflow,underflow -ffree-form -ffree-line-length-none -ffpe-trap=invalid,zero,overflow,underflow -O3 -o MM3.exe -O3 T_Utility_Functions.f90 Meshmaker_V3g.f90
+
+gfortran -ffree-form -ffree-line-length-none -O3 -o MM3.exe -O3 T_Utility_Functions.f90 Meshmaker_V3g.f90
