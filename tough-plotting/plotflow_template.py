@@ -9,26 +9,24 @@ from scipy import interpolate
 #
 # User settings
 #
-fdir = 'sens_ntwk2/'
+
+#   directory of TOUGH results
+fdir = '/Users/zli/Documents/HFTS/results_fracture_network/'
+#   directory of field data
+prodir = '/Users/zli/Documents/HFTS/data/4SM and 4SU Production Tracking 01-22-20.xlsx'
+
+datdir = ['upslo2_gor2800_1500/','upslo2_gor2800_hf1500/','upslo2_gor2800_sf1500/','upslo2_gor2800_hfsf1500/']
+flabel = ['No closure','HF closed','SF closed','HF+SF closed']
 fname = ['Conx_Time_Series','Conx_Time_Series','Conx_Time_Series',
             'Conx_Time_Series','Conx_Time_Series','Conx_Time_Series',
             'Conx_Time_Series','Conx_Time_Series','Conx_Time_Series']
-
-
-
-# fracture network
-
-datdir = ['upslo2_k1e-7_r1000/','upslo2_k1e-7_r1000_rp4/','upslo2_k1e-7_r1000_kmat721/']
-flabel = ['LLP2','LLP2 rp4','LLP2 k721']
 
 ylab = ['Water','Gas','Oil']
 
 plot_cumu = True
 plot_data = True
-savefig = True
-savename = 'fig_srv_isotropy'
-# prodir = '../../data/GTI Well Production Tracking 03-20-2018.xlsx'
-prodir = '../scripts/fielddata/4SM and 4SU Production Tracking 01-22-20.xlsx'
+savefig = False
+savename = 'fig_fracture_closure'
 
 dlabel = ['1714M']
 tfig = 4
@@ -287,10 +285,7 @@ for ff in range(3):
     ifig += 1
 
 
-# plt.savefig('HLP.eps', format='eps')
 if savefig:
-    # plt.savefig('Figure_11.eps', format='eps')
-    # plt.savefig('fig_srv_isotropy.eps', format='eps')
     plt.savefig(savename+'.eps', format='eps')
 
 ifig = 1
@@ -302,7 +297,6 @@ for ff in range(3):
     pos2 = [pos1.x0 + 0.045*(ff-1), pos1.y0+0.015, pos1.width*1.1, pos1.height]
     ax.set_position(pos2)
 
-    print('    --------    ')
     if plot_data is True:
         plt.plot(data_cumu[:,0]+0.5, data_cumu[:,ff+1], label='Field data', color='k', linewidth=1.0, linestyle=':')
     for ii in range(len(datdir)):
@@ -330,8 +324,6 @@ for ff in range(3):
     ifig += 1
 
 if savefig:
-    # plt.savefig('Figure_11.eps', format='eps')
-    # plt.savefig('fig_srv_isotropy.eps', format='eps')
     plt.savefig(savename+'_cumu.eps', format='eps')
 
 plt.show()

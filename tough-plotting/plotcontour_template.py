@@ -11,15 +11,16 @@ from matplotlib import colors
 #
 kernels = ['']
 
-
-folders = ['sens_ntwk/upslo2mink_ksrv1e-20_1e-7_ani1000_L100_cf12/','sens_ntwk/upslo2mink_ksrv1e-20_5e-8_ani100_L100_cf12/']
-flabels = ['kx=1000ky=0.8mD, L=100m','kx=100ky=0.2mD, L=100m']
+folders = ['/Users/zli/Documents/HFTS/results_fracture_network/upslo2_sf2d_100-100-k15_1500_monitor/',
+        '/Users/zli/Documents/HFTS/results_fracture_network/upslo2_sf2d_100-100-k15_hf1500/']
+# folders = ['sens_ntwk/upslo2mink_ksrv1e-20_1e-7_ani1000_L100_cf12/','sens_ntwk/upslo2mink_ksrv1e-20_5e-8_ani100_L100_cf12/']
+flabels = ['No closure','HF closed']
 
 savefig = False
 
 dim = [117,35,45]
 dim_order = [1,2,0]
-T = [8.64e7]
+T = [1.296e8]
 Z = [17]
 
 fields = ['P','S_aqu','S_org','S_gas']
@@ -49,12 +50,15 @@ for ifolder in range(len(folders)):
     plt.colorbar()
     plt.ylabel('Y [m]',fontsize=fs)
     plt.xlabel('X [m]',fontsize=fs)
-    # xlabel = [-354,-177,0,177,354]
-    # xtick = np.linspace(0,dim[0]-1,5)
-    # ylabel = [0,-46,-92,-138,-184]
-    # ytick = np.linspace(0,dim[2]-1,5)
-    plt.xticks([],[])
-    plt.yticks([],[])
+    xlabel = [-354,-177,0,177,354]
+    xtick = np.linspace(0,dim[0]-1,5)
+    # ylabel = [0,-46,-92,-138]
+    ylabel = [0,8,16]
+    ytick = np.linspace(0,dim[1]-1,3)
+    plt.xticks(xtick,xlabel)
+    plt.yticks(ytick,ylabel)
+    # plt.xticks([],[])
+    # plt.yticks([],[])
     plt.text(2,5,flabels[ifolder],{'color':'white','fontsize':fs})
 
     subfig += 1
@@ -123,11 +127,4 @@ for plottime in range(len(T)):
                 savename = 'fig_'+flabels[ifolder]+'_'+field+'.eps'
                 plt.savefig(savename, format='eps')
         ff += 1
-
-
-
-
-
-
-
 plt.show()
