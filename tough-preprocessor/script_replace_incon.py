@@ -1,5 +1,14 @@
 """
     Replace HF elements in INCON by closed permeability
+
+    It requires:
+        SAVE : Outputs of the previous simulation, which will be used as the
+                INCON for restarting.
+        INCON: Initial condition for the new simulation with fractures closed.
+
+    This script inserts the permeability of the closed fractures (from INCON)
+    into the restart file (SAVE) such that the new simulation is performed with
+    fractures closed. 
 """
 import numpy as np
 

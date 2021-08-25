@@ -9,6 +9,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mm_input import *
 
 testid = '09L'
+datdir = '/Users/zli/Documents/HFTS/data/GEOS/'
 
 if testid == 'LLP':
     fname = ['GEOS08_upslo_prop_aper.csv','GEOS08_upslo_prop_aper.csv','GEOS08_upslo_aper.csv']
@@ -20,6 +21,7 @@ if testid == 'LLP':
     offset = [[354.0, 40.0, -120.0],[354.0, 24.0, -120.0],[354.0, 8.0, -120.0]]
     xlim = [0.0, 702.0, 7.9, 8.1, -280.0, 0.0]
     dim = [117, 35, 70]
+    case = ['unpropped','propped','propped+modified']
 elif testid == 'HLP':
     fname = ['GEOS08_upshi_prop_aper.csv','GEOS08_upshi_prop_aper.csv','GEOS08_upshi_aper.csv']
     blk_key = ['upshi1','upshi2','upshi3']
@@ -30,6 +32,7 @@ elif testid == 'HLP':
     offset = [[354.0, 40.0, -120.0],[354.0, 24.0, -120.0],[354.0, 8.0, -120.0]]
     xlim = [0.0, 702.0, 7.9, 8.1, -280.0, 0.0]
     dim = [117, 35, 70]
+    case = ['unpropped','propped','propped+modified']
 elif testid == '4U':
     fname = ['GEOS01_ups4u_prop_aper.csv','GEOS01_ups4u_prop_aper.csv','GEOS01_ups4u_aper.csv']
     blk_key = [None, None, None]
@@ -40,21 +43,23 @@ elif testid == '4U':
     offset = [[354.0, 40.0, -240.0],[354.0, 24.0, -240.0],[354.0, 8.0, -240.0]]
     xlim = [0.0, 702.0, 7.9, 8.1, -280.0, 0.0]
     dim = [117, 35, 70]
+    case = ['unpropped','propped','propped+modified']
 elif testid == '09L':
     testlab = 'LLP'
-    fname = ['GEOS09_upslo_clos_aper.csv','GEOS09_upslo_prop_aper.csv','GEOS09_upslo_prop_aper.csv']
+    fname = [datdir+'GEOS09_upslo_clos_aper.csv',datdir+'GEOS09_upslo_prop_aper.csv',datdir+'GEOS09_upslo_prop_aper.csv']
     blk_key = ['up09l1', 'up09l2', 'up09l3']
     blk_check = [False, False, True]
     blk_result = [[225.0, 0.146], [291.0, 0.278, 465.0, 0.234], [555.0, 0.132]]
-    prop_scale = [[[3.94e-4, 2.91e-4], [None, None], [None, None]],
-                    [[4.0e-4, 3.1e-4], [None, None], [None, None]],
-                    [[3.80e-4, 2.99e-4], [None, None], [None, None]]]
+    # prop_scale = [[[3.94e-4, 2.91e-4], [None, None], [None, None]],
+    #                 [[4.0e-4, 3.1e-4], [None, None], [None, None]],
+    #                 [[3.80e-4, 2.99e-4], [None, None], [None, None]]]
     prop_scale = [[[None, None], [None, None], [None, None]],
                     [[None, None], [None, None], [None, None]],
                     [[None, None], [None, None], [None, None]]]
     offset = [[354.0, 40.0, -120.0],[354.0, 24.0, -120.0],[354.0, 8.0, -120.0]]
     xlim = [0.0, 702.0, 7.9, 8.1, -180.0, 0.0]
     dim = [117, 35, 45]
+    case = ['closed','propped','propped+modified']
 elif testid == '09H':
     testlab = 'HLP'
     fname = ['GEOS09_upshi_aper.csv','GEOS09_upshi_prop_aper.csv','GEOS09_upshi_prop_aper.csv']
@@ -67,30 +72,7 @@ elif testid == '09H':
     offset = [[354.0, 40.0, -280.0],[354.0, 24.0, -280.0],[354.0, 8.0, -280.0]]
     xlim = [0.0, 702.0, 7.9, 8.1, -340.0, 0.0]
     dim = [117, 35, 85]
-elif testid == 'HFL1':
-    testlab = 'HFL1'
-    fname = ['GEOS09_hiflu1_aper.csv','GEOS09_hiflu1_prop_aper.csv','GEOS09_hiflu1_prop_aper.csv']
-    blk_key = [None, None, None]
-    blk_check = [False, False, False]
-    blk_result = [[-154.0, 0.103], [-162.0, 0.113], [-166.0, 0.118]]
-    prop_scale = [[[2.16e-4, 1.59e-4],[None, None], [None, None]],
-                    [[2.10e-4, 1.32e-4],[None, None], [None, None]],
-                    [[2.17e-4, 1.42e-4], [None, None], [None, None]]]
-    offset = [[354.0, 40.0, -280.0],[354.0, 24.0, -280.0],[354.0, 8.0, -280.0]]
-    xlim = [0.0, 702.0, 7.9, 8.1, -340.0, 0.0]
-    dim = [117, 35, 85]
-elif testid == 'HFL2':
-    testlab = 'HFL2'
-    fname = ['GEOS09_hiflu2_aper.csv','GEOS09_hiflu2_prop_aper.csv','GEOS09_hiflu2_prop_aper.csv']
-    blk_key = [None, None, None]
-    blk_check = [False, False, False]
-    blk_result = [[-154.0, 0.103], [-162.0, 0.113], [-166.0, 0.118]]
-    prop_scale = [[[2.16e-4, 1.59e-4],[None, None], [None, None]],
-                    [[2.10e-4, 1.32e-4],[None, None], [None, None]],
-                    [[2.17e-4, 1.42e-4], [None, None], [None, None]]]
-    offset = [[354.0, 40.0, -280.0],[354.0, 24.0, -280.0],[354.0, 8.0, -280.0]]
-    xlim = [0.0, 702.0, 7.9, 8.1, -340.0, 0.0]
-    dim = [117, 35, 85]
+    case = ['unpropped','propped','propped+modified']
 elif testid == 'SML':
     testlab = 'SML'
     fname = ['GEOS03_samepump37_aper.csv','GEOS03_samepump37_prop_aper.csv','GEOS03_samepump37_prop_aper.csv']
@@ -103,6 +85,7 @@ elif testid == 'SML':
     offset = [[354.0, 40.0, -120.0],[354.0, 24.0, -120.0],[354.0, 8.0, -120.0]]
     xlim = [0.0, 702.0, 7.9, 8.1, -340.0, 0.0]
     dim = [117, 35, 85]
+    case = ['unpropped','propped','propped+modified']
 elif testid == 'SMH':
     testlab = 'SMH'
     fname = ['GEOS03_samepump25_aper.csv','GEOS03_samepump25_prop_aper.csv','GEOS03_samepump25_prop_aper.csv']
@@ -115,17 +98,16 @@ elif testid == 'SMH':
     offset = [[354.0, 40.0, -280.0],[354.0, 24.0, -280.0],[354.0, 8.0, -280.0]]
     xlim = [0.0, 702.0, 7.9, 8.1, -340.0, 0.0]
     dim = [117, 35, 85]
+    case = ['unpropped','propped','propped+modified']
 
 savedata = False
 savefig = False
 max_val = 1.2
 
 yfrac = ['16 m','32 m','48 m','64 m','80 m']
-case = ['unpropped','propped','propped+modified']
 figind = ['(a)','(b)','(c)','(d)','(e)','(f)','(g)','(h)','(i)','(j)','(k)','(l)']
 
 cutoff = 1e-7
-
 
 iso_coef = 1.0
 blk_range = {
@@ -187,16 +169,6 @@ for jj in range(3):
         if blk_check[ii]:
             aper = geos.scale(geos_aper, prop_scale[jj][ii], cutoff)
             aper_sc = geos.block_checking(aper, blk_key[jj], blk_range, iso_coef)
-            # for kk in range(np.shape(aper_sc)[0]):
-                # if aper_sc[kk,2] < -220.0 and aper_sc[kk,2] > -255.0 and aper_sc[kk,3] < 4e-4:
-                #     if aper_sc[kk,0] > 340.0 and aper_sc[kk,0] < 375.0:
-                #         aper_sc[kk,3] = np.amax([4e-4, aper_sc[kk,3]])
-                # if aper_sc[kk,3] > 6e-4:
-                #     aper_sc[kk,3] = 6e-4
-                # if aper_sc[kk,2] > -200.0 and aper_sc[kk,3] > 1.2e-4:
-                #     aper_sc[kk,3] = 1.2e-4
-                # if aper_sc[kk,2] > -150:
-                #     aper_sc[kk,3] = np.nan
             slice = []
             for kk in range(np.shape(aper_sc)[0]):
                 if aper_sc[kk,2] == -238.0:
@@ -210,10 +182,6 @@ for jj in range(3):
             ns = len(slice)
             print(np.nanmean(slice))
             print(np.nansum(slice**3.0), np.nansum(ns*(np.nanmean(slice)**3.0)), np.nansum(ns*(6e-4**3.0)))
-
-
-
-
         else:
             aper_sc = geos.scale(geos_aper, prop_scale[jj][ii], cutoff)
 
@@ -239,22 +207,13 @@ ifig = 0
 
 for ii in range(len(fname)):
     for col in range(3):
-        # key = str(ii)
         key = str(ifig)
         ax = plt.subplot(len(fname),3,ifig+1)
         pos1 = ax.get_position()
         pos2 = [pos1.x0 + 0.03*(col-1), pos1.y0 + 0.02*(1-ii), pos1.width*1.1, pos1.height]
         ax.set_position(pos2)
-        # slice = np.transpose(geos_union[key][:,col,:])
         slice = np.transpose(aper3D[key][:,0,:])
-        # aa = slice < (np.nanmax(slice)/5.0)
-        # aa = slice <= 1e-4
-        # slice[aa] = 1e-4
-
-
-        # img=ax.imshow(np.transpose(slice)*1e3, cmap='jet', vmin=0.0, vmax=max_val, interpolation='bilinear')
         img=ax.imshow(slice*1e3, cmap='jet', vmin=0.0, vmax=max_val, interpolation='bilinear')
-        # img=ax.imshow(slice*1e3, cmap='jet', vmin=0.0, vmax=max_val)
 
         # plot the modified zone
         if col == 2:
@@ -275,7 +234,6 @@ for ii in range(len(fname)):
                     plt.text(2, -blk_result[ii][2]/4.0+6, str(blk_result[ii][3])+' mm', color='r', fontsize=fs)
                     plt.plot([blk_result[ii][4]/6.0, blk_result[ii][4]/6.0], [dim[2]-1, 35], 'r--')
                     plt.text(blk_result[ii][4]/6.0-32, 82, str(blk_result[ii][5])+' mm', color='r', fontsize=fs)
-
 
         if ii == 2:
             plt.xlabel('X [m]',fontsize=fs)
@@ -307,19 +265,11 @@ for ii in range(len(fname)):
         if col == 2:
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="3%", pad=0.02)
-            #
             plt.colorbar(img, cax=cax)
 
         ifig += 1
 
-# plt.savefig('HLP.eps', format='eps')
 if savefig:
-    plt.savefig('Figure_5_SMH.eps', format='eps')
-
-
-
+    plt.savefig('Fig_geos_aper.eps', format='eps')
 
 plt.show()
-
-# Interpolate to desired range and resolution
-#
