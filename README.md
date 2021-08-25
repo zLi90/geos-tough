@@ -43,6 +43,26 @@ Generate input files (INPUT, MESH, INCON) for TOUGH simulations. This entire aut
 * Apply non-uniform permeability for the MINC fractures in INCON. This is used to represent the secondary fractures.
 * Automatically write the INPUT file for TOUGH.
 
+```
+script_replace_incon.py
+```
+Replace permeability in INCON by the closed permeability. This script is used to restart TOUGH simulation with closed fractures.
 
+
+### Plot TOUGH results
+
+```
+plotflow_template.py
+```
+This script is an example (template) for plotting time-dependent TOUGH outputs (from Conx_Time_Series). User can plot multiple test scenarios in one figure. An example figure looks like this:
+
+<img width="691" alt="Screen Shot 2021-08-25 at 9 37 18 PM" src="https://user-images.githubusercontent.com/18181974/130800761-87198d05-2bee-4e0a-b2a7-bc2acbe46173.png">
+
+```
+plotcontour_template.py
+```
+This script is an example (template) for plotting spatial distribution (2D slices) of TOUGH outputs (from Plot_Data_Elem). Here is an example of the modeled pressure.
+
+<img width="728" alt="Screen Shot 2021-08-25 at 10 04 06 PM" src="https://user-images.githubusercontent.com/18181974/130805567-c77c944e-d3da-435e-a77d-ccc4732324cb.png">
 
 
